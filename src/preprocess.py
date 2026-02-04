@@ -6,11 +6,17 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 def preprocess_data(df, target_column):
-    # Drop rows where target is missing
     df = df.dropna(subset=[target_column])
 
     X = df.drop(columns=[target_column])
     y = df[target_column]
+
+    # Detect problem type
+    if y.dtype in ["int64", "float64"] and y.nunique() > 10:
+        problem_type = "regression"
+    else:
+        problem_type = "classification"
+        y = y.astype("category").cat.codes
 
     numeric_features = X.select_dtypes(include=["int64", "float64"]).columns
     categorical_features = X.select_dtypes(include=["object"]).columns
@@ -30,17 +36,8 @@ def preprocess_data(df, target_column):
         ("cat", categorical_pipeline, categorical_features)
     ])
 
-    # Check class distribution
-    class_counts = y.value_counts()
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
-    if class_counts.min() < 2:
-        # Not enough samples for stratify
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
-    else:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
-        )
-
-    return preprocessor, X_train, X_test, y_train, y_test
+    return preprocessor, X_train, X_test, y_train, y_test, problem_type

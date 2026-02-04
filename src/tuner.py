@@ -1,30 +1,24 @@
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
-from collections import Counter
 
 
-def tune_model(name, model, param_grid, preprocessor, X_train, y_train):
+def tune_model(name, model, param_grid, preprocessor, X_train, y_train, problem_type="classification"):
     pipeline = Pipeline([
         ("preprocessor", preprocessor),
-        ("classifier", model)
+        ("model", model)
     ])
 
-    class_counts = Counter(y_train)
-    min_class_samples = min(class_counts.values())
+    scoring = "f1_weighted" if problem_type == "classification" else "r2"
 
-    # If too few samples for CV, skip GridSearch
-    if min_class_samples < 3:
-        print(f"⚠ Skipping hyperparameter tuning for {name} (not enough samples per class)")
+    if not param_grid:
         pipeline.fit(X_train, y_train)
         return pipeline, {}, None
-
-    cv_folds = min(3, min_class_samples)
 
     grid_search = GridSearchCV(
         pipeline,
         param_grid,
-        cv=cv_folds,
-        scoring="f1_weighted",
+        cv=3,
+        scoring=scoring,
         n_jobs=-1
     )
 
